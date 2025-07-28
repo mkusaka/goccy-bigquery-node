@@ -1,0 +1,1 @@
+# goccy-bigquery-node
