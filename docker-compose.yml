@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  bigquery-emulator:
+    image: ghcr.io/goccy/bigquery-emulator:latest
+    container_name: bigquery-emulator
+    command: ["--project=test-project", "--log-level=debug"]
+    ports:
+      - "9050:9050"  # REST API port
+      - "9060:9060"  # gRPC port for Storage API
+    volumes:
+      # Optional: mount data directory for persistent storage
+      - ./bigquery-data:/data
