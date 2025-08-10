@@ -49,14 +49,18 @@ async function main(): Promise<void> {
     // Create a test dataset
     const datasetId = 'test_dataset';
     
+    // Check if dataset exists and delete it if it does
+    const dataset = bigquery.dataset(datasetId);
+    const [exists] = await dataset.exists();
+    
+    if (exists) {
+      console.log(`\nDataset ${datasetId} already exists. Deleting...`);
+      await dataset.delete({ force: true });
+      console.log(`Dataset ${datasetId} deleted successfully`);
+    }
+    
     console.log(`\nCreating dataset: ${datasetId}`);
-    const [dataset] = await bigquery.createDataset(datasetId).catch((err: any) => {
-      if (err.code === 409) {
-        console.log(`Dataset ${datasetId} already exists`);
-        return [bigquery.dataset(datasetId)];
-      }
-      throw err;
-    });
+    const [newDataset] = await bigquery.createDataset(datasetId);
     
     // Create a test table
     const tableId = 'test_table';
@@ -67,13 +71,7 @@ async function main(): Promise<void> {
     ];
     
     console.log(`Creating table: ${tableId}`);
-    const [table] = await dataset.createTable(tableId, { schema }).catch((err: any) => {
-      if (err.code === 409) {
-        console.log(`Table ${tableId} already exists`);
-        return [dataset.table(tableId)];
-      }
-      throw err;
-    });
+    const [table] = await newDataset.createTable(tableId, { schema });
     
     // Insert test data
     const rows = [
@@ -88,7 +86,7 @@ async function main(): Promise<void> {
     // Query the data
     const query = `
       SELECT id, name, created_at
-      FROM \`${dataset.id}.${tableId}\`
+      FROM \`${newDataset.id}.${tableId}\`
       ORDER BY id
     `;
     
@@ -104,7 +102,7 @@ async function main(): Promise<void> {
     // Test aggregation query
     const aggregationQuery = `
       SELECT COUNT(*) as total, MAX(id) as max_id
-      FROM \`${dataset.id}.${tableId}\`
+      FROM \`${newDataset.id}.${tableId}\`
     `;
     
     console.log(`\nExecuting aggregation query:\n${aggregationQuery}`);

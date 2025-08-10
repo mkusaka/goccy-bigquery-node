@@ -48,18 +48,18 @@ async function main(): Promise<void> {
     // Create a test dataset
     const datasetId = 'override_test_dataset';
     
-    console.log(`Creating dataset: ${datasetId}`);
-    let dataset;
-    try {
-      [dataset] = await bigquery.createDataset(datasetId);
-    } catch (err: any) {
-      if (err.code === 409 || err.message?.includes('already')) {
-        console.log(`Dataset ${datasetId} already exists`);
-        dataset = bigquery.dataset(datasetId);
-      } else {
-        throw err;
-      }
+    // Check if dataset exists and delete it if it does
+    const dataset = bigquery.dataset(datasetId);
+    const [exists] = await dataset.exists();
+    
+    if (exists) {
+      console.log(`\nDataset ${datasetId} already exists. Deleting...`);
+      await dataset.delete({ force: true });
+      console.log(`Dataset ${datasetId} deleted successfully`);
     }
+    
+    console.log(`\nCreating dataset: ${datasetId}`);
+    const [newDataset] = await bigquery.createDataset(datasetId);
     
     // Create a simple test table
     const tableId = 'simple_users';
@@ -71,17 +71,7 @@ async function main(): Promise<void> {
     ];
     
     console.log(`Creating table: ${tableId}`);
-    let table;
-    try {
-      [table] = await dataset.createTable(tableId, { schema });
-    } catch (err: any) {
-      if (err.code === 409 || err.message?.includes('already')) {
-        console.log(`Table ${tableId} already exists`);
-        table = dataset.table(tableId);
-      } else {
-        throw err;
-      }
-    }
+    const [table] = await newDataset.createTable(tableId, { schema });
     
     // Insert test data
     const rows = [
@@ -96,7 +86,7 @@ async function main(): Promise<void> {
     // Query active users
     const query = `
       SELECT user_id, username, email, is_active
-      FROM \`${dataset.id}.${tableId}\`
+      FROM \`${newDataset.id}.${tableId}\`
       WHERE is_active = true
       ORDER BY user_id
     `;
